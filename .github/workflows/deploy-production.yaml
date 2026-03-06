@@ -1,0 +1,40 @@
+name: Auto deploy patagonia-lands-admin in VPS
+
+on:
+  push:
+    branches:
+      - production
+    paths:
+      - ".github/workflows/**"
+      - "index.html"
+      - "package.json"
+      - "public/**"
+      - "src/**"
+      - "vite.config.ts"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Deploy using ssh
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.PRODUCTION_SSH_HOST }}
+          username: ${{ secrets.PRODUCTION_SSH_USERNAME }}
+          key: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            cd /root/repos/patagonia-lands-admin
+            git pull origin production
+            cat <<EOF > .env
+            VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
+            EOF
+            docker-compose build
+            docker-compose down -v
+            docker-compose up -d
