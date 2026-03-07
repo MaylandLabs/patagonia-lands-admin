@@ -2,30 +2,25 @@ export interface Property {
   id: number
   title_es: string
   title_en: string
-  title_pt: string
   description_es: string
   description_en: string
-  description_pt: string
   full_description_es: string
   full_description_en: string
-  full_description_pt: string
-  price: number
+  price: string
   hectares: number
   province: string
   zone: string
   location: string
   activity_es: string
   activity_en: string
-  activity_pt: string
   status_es: string
   status_en: string
-  status_pt: string
-  google_maps_url: string
-  whatsapp_message_es: string
-  whatsapp_message_en: string
-  whatsapp_message_pt: string
   visible: boolean
   featured: boolean
+  whatsapp_message_es: string
+  whatsapp_message_en: string
+  lat: number | null
+  lon: number | null
   characteristics: Characteristic[]
   features: Feature[]
   images: PropertyImage[]
@@ -37,7 +32,6 @@ export interface Characteristic {
   id?: number
   label_es: string
   label_en: string
-  label_pt: string
   value: string
 }
 
@@ -45,7 +39,6 @@ export interface Feature {
   id?: number
   text_es: string
   text_en: string
-  text_pt: string
 }
 
 export interface PropertyImage {
@@ -61,8 +54,9 @@ export interface PublishRequest {
   phone: string
   province: string
   hectares: number
-  message: string
-  is_read: boolean
+  activity: string
+  description: string
+  read: boolean
   created_at: string
 }
 

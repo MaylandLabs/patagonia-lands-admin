@@ -1,8 +1,13 @@
 import api from './client'
 import type { Property, PropertyFormData } from '@/types'
 
-export async function getProperties(params?: { search?: string; province?: string }) {
-  const { data } = await api.get<Property[]>('/properties', { params })
+interface PaginatedResponse<T> {
+  data: T[]
+  pagination: { total: number; page: number; limit: number; pages: number }
+}
+
+export async function getProperties(params?: { search?: string; province?: string; page?: number; limit?: number }) {
+  const { data } = await api.get<PaginatedResponse<Property>>('/properties/admin/list', { params })
   return data
 }
 
@@ -12,37 +17,42 @@ export async function getProperty(id: number) {
 }
 
 export async function createProperty(property: PropertyFormData) {
-  const { data } = await api.post<Property>('/properties', property)
+  const { data } = await api.post<Property>('/properties/admin', property)
   return data
 }
 
 export async function updateProperty(id: number, property: Partial<PropertyFormData>) {
-  const { data } = await api.put<Property>(`/properties/${id}`, property)
+  const { data } = await api.put<Property>(`/properties/admin/${id}`, property)
   return data
 }
 
 export async function deleteProperty(id: number) {
-  await api.delete(`/properties/${id}`)
+  await api.delete(`/properties/admin/${id}`)
 }
 
-export async function togglePropertyField(id: number, field: 'visible' | 'featured', value: boolean) {
-  const { data } = await api.patch<Property>(`/properties/${id}`, { [field]: value })
+export async function toggleVisibility(id: number) {
+  const { data } = await api.patch(`/properties/admin/${id}/visibility`)
+  return data
+}
+
+export async function toggleFeatured(id: number) {
+  const { data } = await api.patch(`/properties/admin/${id}/featured`)
   return data
 }
 
 export async function uploadImages(propertyId: number, files: File[]) {
   const formData = new FormData()
   files.forEach((file) => formData.append('images', file))
-  const { data } = await api.post<Property>(`/properties/${propertyId}/images`, formData, {
+  const { data } = await api.post(`/properties/admin/${propertyId}/images`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
   return data
 }
 
 export async function deleteImage(propertyId: number, imageId: number) {
-  await api.delete(`/properties/${propertyId}/images/${imageId}`)
+  await api.delete(`/properties/admin/${propertyId}/images/${imageId}`)
 }
 
-export async function reorderImages(propertyId: number, imageIds: number[]) {
-  await api.put(`/properties/${propertyId}/images/reorder`, { image_ids: imageIds })
+export async function reorderImages(propertyId: number, order: { id: number; position: number }[]) {
+  await api.put(`/properties/admin/${propertyId}/images/reorder`, { order })
 }

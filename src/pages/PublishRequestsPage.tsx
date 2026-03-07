@@ -13,13 +13,15 @@ export default function PublishRequestsPage() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
-  const { data: requests = [], isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['publish-requests'],
-    queryFn: getPublishRequests,
+    queryFn: () => getPublishRequests(),
   })
 
+  const requests = data?.data ?? []
+
   const readMutation = useMutation({
-    mutationFn: ({ id, is_read }: { id: number; is_read: boolean }) => markAsRead(id, is_read),
+    mutationFn: (id: number) => markAsRead(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['publish-requests'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
@@ -29,8 +31,8 @@ export default function PublishRequestsPage() {
 
   const handleOpen = (req: PublishRequest) => {
     setSelected(req)
-    if (!req.is_read) {
-      readMutation.mutate({ id: req.id, is_read: true })
+    if (!req.read) {
+      readMutation.mutate(req.id)
     }
   }
 
@@ -64,11 +66,11 @@ export default function PublishRequestsPage() {
                 requests.map((req) => (
                   <tr
                     key={req.id}
-                    className={`border-t cursor-pointer hover:bg-muted/30 ${!req.is_read ? 'font-medium bg-muted/10' : ''}`}
+                    className={`border-t cursor-pointer hover:bg-muted/30 ${!req.read ? 'font-medium bg-muted/10' : ''}`}
                     onClick={() => handleOpen(req)}
                   >
                     <td className="p-3">
-                      {req.is_read ? (
+                      {req.read ? (
                         <MailOpen className="h-4 w-4 text-muted-foreground" />
                       ) : (
                         <Mail className="h-4 w-4 text-primary" />
@@ -81,8 +83,8 @@ export default function PublishRequestsPage() {
                     <td className="p-3">{req.hectares?.toLocaleString()}</td>
                     <td className="p-3">{new Date(req.created_at).toLocaleDateString('es-AR')}</td>
                     <td className="p-3">
-                      <Badge variant={req.is_read ? 'secondary' : 'default'}>
-                        {req.is_read ? 'Leido' : 'Nuevo'}
+                      <Badge variant={req.read ? 'secondary' : 'default'}>
+                        {req.read ? 'Leido' : 'Nuevo'}
                       </Badge>
                     </td>
                   </tr>
@@ -121,23 +123,15 @@ export default function PublishRequestsPage() {
                     <span className="text-muted-foreground">Hectareas:</span>
                     <p>{selected.hectares?.toLocaleString()}</p>
                   </div>
+                  <div>
+                    <span className="text-muted-foreground">Actividad:</span>
+                    <p>{selected.activity}</p>
+                  </div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Mensaje:</span>
-                  <p className="mt-1 whitespace-pre-wrap">{selected.message}</p>
+                  <span className="text-muted-foreground">Descripcion:</span>
+                  <p className="mt-1 whitespace-pre-wrap">{selected.description}</p>
                 </div>
-              </div>
-              <div className="flex justify-end pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    readMutation.mutate({ id: selected.id, is_read: !selected.is_read })
-                    setSelected((prev) => prev ? { ...prev, is_read: !prev.is_read } : null)
-                  }}
-                >
-                  {selected.is_read ? 'Marcar como no leido' : 'Marcar como leido'}
-                </Button>
               </div>
             </>
           )}

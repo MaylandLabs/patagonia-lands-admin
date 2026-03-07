@@ -16,6 +16,7 @@ import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, rectSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Plus, Trash2, GripVertical, Upload, X, ArrowLeft } from 'lucide-react'
+import MapPicker from '@/components/MapPicker'
 import type { PropertyImage } from '@/types'
 
 const PROVINCES = ['Santa Cruz', 'Tierra del Fuego', 'Chubut', 'Rio Negro', 'Neuquen']
@@ -23,40 +24,33 @@ const PROVINCES = ['Santa Cruz', 'Tierra del Fuego', 'Chubut', 'Rio Negro', 'Neu
 const schema = z.object({
   title_es: z.string().min(1, 'Requerido'),
   title_en: z.string().optional().default(''),
-  title_pt: z.string().optional().default(''),
   description_es: z.string().optional().default(''),
   description_en: z.string().optional().default(''),
-  description_pt: z.string().optional().default(''),
   full_description_es: z.string().optional().default(''),
   full_description_en: z.string().optional().default(''),
-  full_description_pt: z.string().optional().default(''),
-  price: z.coerce.number().min(0),
+  price: z.string().optional().default(''),
   hectares: z.coerce.number().min(0),
   province: z.string().min(1, 'Requerido'),
   zone: z.string().optional().default(''),
   location: z.string().optional().default(''),
   activity_es: z.string().optional().default(''),
   activity_en: z.string().optional().default(''),
-  activity_pt: z.string().optional().default(''),
   status_es: z.string().optional().default(''),
   status_en: z.string().optional().default(''),
-  status_pt: z.string().optional().default(''),
-  google_maps_url: z.string().optional().default(''),
   whatsapp_message_es: z.string().optional().default(''),
   whatsapp_message_en: z.string().optional().default(''),
-  whatsapp_message_pt: z.string().optional().default(''),
   visible: z.boolean().default(false),
   featured: z.boolean().default(false),
+  lat: z.coerce.number().nullable().default(null),
+  lon: z.coerce.number().nullable().default(null),
   characteristics: z.array(z.object({
     label_es: z.string(),
     label_en: z.string(),
-    label_pt: z.string(),
     value: z.string(),
   })).default([]),
   features: z.array(z.object({
     text_es: z.string(),
     text_en: z.string(),
-    text_pt: z.string(),
   })).default([]),
 })
 
@@ -109,13 +103,10 @@ export default function PropertyFormPage() {
       reset({
         title_es: property.title_es,
         title_en: property.title_en,
-        title_pt: property.title_pt,
         description_es: property.description_es,
         description_en: property.description_en,
-        description_pt: property.description_pt,
         full_description_es: property.full_description_es,
         full_description_en: property.full_description_en,
-        full_description_pt: property.full_description_pt,
         price: property.price,
         hectares: property.hectares,
         province: property.province,
@@ -123,16 +114,14 @@ export default function PropertyFormPage() {
         location: property.location,
         activity_es: property.activity_es,
         activity_en: property.activity_en,
-        activity_pt: property.activity_pt,
         status_es: property.status_es,
         status_en: property.status_en,
-        status_pt: property.status_pt,
-        google_maps_url: property.google_maps_url,
         whatsapp_message_es: property.whatsapp_message_es,
         whatsapp_message_en: property.whatsapp_message_en,
-        whatsapp_message_pt: property.whatsapp_message_pt,
         visible: property.visible,
         featured: property.featured,
+        lat: property.lat,
+        lon: property.lon,
         characteristics: property.characteristics ?? [],
         features: property.features ?? [],
       })
@@ -157,7 +146,7 @@ export default function PropertyFormPage() {
     if (!e.target.files?.length || !id) return
     try {
       const result = await uploadImages(Number(id), Array.from(e.target.files))
-      setImages(result.images ?? [])
+      setImages((prev) => [...prev, ...(result.data ?? [])])
       toast({ title: 'Imagenes subidas' })
     } catch {
       toast({ title: 'Error al subir imagenes', variant: 'destructive' })
@@ -184,7 +173,7 @@ export default function PropertyFormPage() {
     const newImages = arrayMove(images, oldIndex, newIndex)
     setImages(newImages)
     try {
-      await reorderImages(Number(id), newImages.map((img) => img.id))
+      await reorderImages(Number(id), newImages.map((img, i) => ({ id: img.id, position: i + 1 })))
     } catch {
       toast({ title: 'Error al reordenar', variant: 'destructive' })
     }
@@ -205,7 +194,7 @@ export default function PropertyFormPage() {
         {/* Titulos */}
         <section className="space-y-4">
           <h2 className="text-lg font-semibold border-b pb-2">Titulos</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Titulo (ES) *</Label>
               <Input {...register('title_es')} />
@@ -215,31 +204,33 @@ export default function PropertyFormPage() {
               <Label>Titulo (EN)</Label>
               <Input {...register('title_en')} />
             </div>
-            <div className="space-y-2">
-              <Label>Titulo (PT)</Label>
-              <Input {...register('title_pt')} />
-            </div>
           </div>
         </section>
 
-        {/* Descripciones cortas */}
+        {/* Descripcion corta */}
         <section className="space-y-4">
-          <h2 className="text-lg font-semibold border-b pb-2">Descripciones cortas</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {(['es', 'en', 'pt'] as const).map((lang) => (
+          <div className="border-b pb-2">
+            <h2 className="text-lg font-semibold">Descripcion corta</h2>
+            <p className="text-sm text-muted-foreground">Se muestra en la tarjeta de la propiedad en el listado.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(['es', 'en'] as const).map((lang) => (
               <div key={lang} className="space-y-2">
-                <Label>Descripcion ({lang.toUpperCase()})</Label>
+                <Label>Descripcion corta ({lang.toUpperCase()})</Label>
                 <Textarea {...register(`description_${lang}`)} rows={3} />
               </div>
             ))}
           </div>
         </section>
 
-        {/* Descripciones completas */}
+        {/* Descripcion completa */}
         <section className="space-y-4">
-          <h2 className="text-lg font-semibold border-b pb-2">Descripciones completas</h2>
+          <div className="border-b pb-2">
+            <h2 className="text-lg font-semibold">Descripcion completa</h2>
+            <p className="text-sm text-muted-foreground">Se muestra en la pagina de detalle de la propiedad.</p>
+          </div>
           <div className="space-y-4">
-            {(['es', 'en', 'pt'] as const).map((lang) => (
+            {(['es', 'en'] as const).map((lang) => (
               <div key={lang} className="space-y-2">
                 <Label>Descripcion completa ({lang.toUpperCase()})</Label>
                 <Textarea {...register(`full_description_${lang}`)} rows={5} />
@@ -254,7 +245,7 @@ export default function PropertyFormPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Precio (USD) *</Label>
-              <Input type="number" {...register('price')} />
+              <Input {...register('price')} />
               {errors.price && <p className="text-xs text-destructive">{errors.price.message}</p>}
             </div>
             <div className="space-y-2">
@@ -284,37 +275,63 @@ export default function PropertyFormPage() {
               <Label>Ubicacion</Label>
               <Input {...register('location')} />
             </div>
-            <div className="space-y-2">
-              <Label>Google Maps URL</Label>
-              <Input {...register('google_maps_url')} />
-            </div>
           </div>
+        </section>
+
+        {/* Ubicacion en mapa */}
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold border-b pb-2">Ubicacion en mapa</h2>
+          <p className="text-sm text-muted-foreground">Hace click en el mapa para seleccionar la ubicacion de la propiedad.</p>
+          <MapPicker
+            latitude={watch('lat')}
+            longitude={watch('lon')}
+            onChange={(lat, lng) => {
+              setValue('lat', lat)
+              setValue('lon', lng)
+            }}
+          />
+          {watch('lat') !== null && watch('lon') !== null && (
+            <p className="text-sm text-muted-foreground">
+              Coordenadas: {watch('lat')?.toFixed(6)}, {watch('lon')?.toFixed(6)}
+            </p>
+          )}
         </section>
 
         {/* Actividad y estado */}
         <section className="space-y-4">
           <h2 className="text-lg font-semibold border-b pb-2">Actividad y estado</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {(['es', 'en', 'pt'] as const).map((lang) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(['es', 'en'] as const).map((lang) => (
               <div key={`act-${lang}`} className="space-y-2">
                 <Label>Actividad ({lang.toUpperCase()})</Label>
                 <Input {...register(`activity_${lang}`)} />
               </div>
             ))}
-            {(['es', 'en', 'pt'] as const).map((lang) => (
-              <div key={`st-${lang}`} className="space-y-2">
-                <Label>Estado ({lang.toUpperCase()})</Label>
-                <Input {...register(`status_${lang}`)} />
-              </div>
-            ))}
+            <div className="space-y-2">
+              <Label>Estado</Label>
+              <Select value={watch('status_es')} onValueChange={(v) => {
+                setValue('status_es', v)
+                const translations: Record<string, string> = { 'Disponible': 'Available', 'Reservado': 'Reserved', 'Comprado': 'Sold' }
+                setValue('status_en', translations[v] ?? v)
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {['Disponible', 'Reservado', 'Comprado'].map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </section>
 
         {/* Mensajes WhatsApp */}
         <section className="space-y-4">
           <h2 className="text-lg font-semibold border-b pb-2">Mensajes de WhatsApp</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {(['es', 'en', 'pt'] as const).map((lang) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(['es', 'en'] as const).map((lang) => (
               <div key={lang} className="space-y-2">
                 <Label>Mensaje ({lang.toUpperCase()})</Label>
                 <Textarea {...register(`whatsapp_message_${lang}`)} rows={3} />
@@ -326,13 +343,16 @@ export default function PropertyFormPage() {
         {/* Caracteristicas */}
         <section className="space-y-4">
           <div className="flex items-center justify-between border-b pb-2">
-            <h2 className="text-lg font-semibold">Caracteristicas</h2>
-            <Button type="button" variant="outline" size="sm" onClick={() => appendChar({ label_es: '', label_en: '', label_pt: '', value: '' })}>
+            <div>
+              <h2 className="text-lg font-semibold">Caracteristicas</h2>
+              <p className="text-sm text-muted-foreground">Pares de nombre y valor. Ej: Label "Superficie" → Valor "5.000 ha", Label "Agua" → Valor "Rio Santa Cruz".</p>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={() => appendChar({ label_es: '', label_en: '', value: '' })}>
               <Plus className="h-4 w-4 mr-1" /> Agregar
             </Button>
           </div>
           {charFields.map((field, index) => (
-            <div key={field.id} className="grid grid-cols-5 gap-3 items-end">
+            <div key={field.id} className="grid grid-cols-4 gap-3 items-end">
               <div className="space-y-1">
                 <Label className="text-xs">Label ES</Label>
                 <Input {...register(`characteristics.${index}.label_es`)} />
@@ -340,10 +360,6 @@ export default function PropertyFormPage() {
               <div className="space-y-1">
                 <Label className="text-xs">Label EN</Label>
                 <Input {...register(`characteristics.${index}.label_en`)} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Label PT</Label>
-                <Input {...register(`characteristics.${index}.label_pt`)} />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Valor</Label>
@@ -356,16 +372,19 @@ export default function PropertyFormPage() {
           ))}
         </section>
 
-        {/* Features */}
+        {/* Beneficios */}
         <section className="space-y-4">
           <div className="flex items-center justify-between border-b pb-2">
-            <h2 className="text-lg font-semibold">Features</h2>
-            <Button type="button" variant="outline" size="sm" onClick={() => appendFeat({ text_es: '', text_en: '', text_pt: '' })}>
+            <div>
+              <h2 className="text-lg font-semibold">Beneficios</h2>
+              <p className="text-sm text-muted-foreground">Lista de puntos destacados. Ej: "Vista al Glaciar Perito Moreno", "Acceso por ruta asfaltada todo el ano".</p>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={() => appendFeat({ text_es: '', text_en: '' })}>
               <Plus className="h-4 w-4 mr-1" /> Agregar
             </Button>
           </div>
           {featFields.map((field, index) => (
-            <div key={field.id} className="grid grid-cols-4 gap-3 items-end">
+            <div key={field.id} className="grid grid-cols-3 gap-3 items-end">
               <div className="space-y-1">
                 <Label className="text-xs">Texto ES</Label>
                 <Input {...register(`features.${index}.text_es`)} />
@@ -373,10 +392,6 @@ export default function PropertyFormPage() {
               <div className="space-y-1">
                 <Label className="text-xs">Texto EN</Label>
                 <Input {...register(`features.${index}.text_en`)} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Texto PT</Label>
-                <Input {...register(`features.${index}.text_pt`)} />
               </div>
               <Button type="button" variant="ghost" size="icon" onClick={() => removeFeat(index)}>
                 <Trash2 className="h-4 w-4 text-destructive" />

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { getProperties, deleteProperty, togglePropertyField } from '@/api/properties'
+import { getProperties, deleteProperty, toggleVisibility, toggleFeatured } from '@/api/properties'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -19,10 +19,12 @@ export default function PropertiesListPage() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
-  const { data: properties = [], isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['properties', search, province],
     queryFn: () => getProperties({ search: search || undefined, province: province || undefined }),
   })
+
+  const properties = data?.data ?? []
 
   const deleteMutation = useMutation({
     mutationFn: deleteProperty,
@@ -34,9 +36,14 @@ export default function PropertiesListPage() {
     onError: () => toast({ title: 'Error al eliminar', variant: 'destructive' }),
   })
 
-  const toggleMutation = useMutation({
-    mutationFn: ({ id, field, value }: { id: number; field: 'visible' | 'featured'; value: boolean }) =>
-      togglePropertyField(id, field, value),
+  const visibilityMutation = useMutation({
+    mutationFn: (id: number) => toggleVisibility(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['properties'] }),
+    onError: () => toast({ title: 'Error al actualizar', variant: 'destructive' }),
+  })
+
+  const featuredMutation = useMutation({
+    mutationFn: (id: number) => toggleFeatured(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['properties'] }),
     onError: () => toast({ title: 'Error al actualizar', variant: 'destructive' }),
   })
@@ -107,13 +114,13 @@ export default function PropertiesListPage() {
                     <td className="p-3 text-center">
                       <Switch
                         checked={p.visible}
-                        onCheckedChange={(v) => toggleMutation.mutate({ id: p.id, field: 'visible', value: v })}
+                        onCheckedChange={() => visibilityMutation.mutate(p.id)}
                       />
                     </td>
                     <td className="p-3 text-center">
                       <Switch
                         checked={p.featured}
-                        onCheckedChange={(v) => toggleMutation.mutate({ id: p.id, field: 'featured', value: v })}
+                        onCheckedChange={() => featuredMutation.mutate(p.id)}
                       />
                     </td>
                     <td className="p-3 text-right space-x-1">
