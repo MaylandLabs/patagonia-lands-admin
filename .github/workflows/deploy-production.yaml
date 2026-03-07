@@ -32,9 +32,7 @@ jobs:
           script: |
             cd /root/repos/patagonia-lands-admin
             git pull origin production
-            cat <<EOF > .env
-            VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
-            EOF
-            docker-compose build
+            echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" > .env
+            docker-compose build --no-cache
             docker-compose down -v
             docker-compose up -d
