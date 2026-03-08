@@ -30,7 +30,7 @@ jobs:
           key: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            cd /root/repos/v0-redesign-rural-estate-website
+            cd /root/repos/patagonia-lands-admin
             git pull origin production
             echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" > .env
             docker-compose build --no-cache
