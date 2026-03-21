@@ -15,7 +15,7 @@ import { useToast } from '@/components/ui/toast'
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, rectSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Plus, Trash2, GripVertical, Upload, X, ArrowLeft } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Upload, X, ArrowLeft, Languages } from 'lucide-react'
 import MapPicker from '@/components/MapPicker'
 import type { PropertyImage } from '@/types'
 
@@ -181,6 +181,39 @@ export default function PropertyFormPage() {
 
   const provinceValue = watch('province')
 
+  const handleTranslate = useCallback(async () => {
+    const values = watch()
+    const chars = values.characteristics?.filter((c) => c.label_es).map((c) => `  - "${c.label_es}"`).join('\n') || '  (ninguna)'
+    const feats = values.features?.filter((f) => f.text_es).map((f) => `  - "${f.text_es}"`).join('\n') || '  (ninguna)'
+
+    const prompt = `Translate the following real estate property fields from Spanish to English. Return ONLY a raw JSON object (no markdown, no explanation) with exactly these keys:
+
+{
+  "title_en": "...",
+  "description_en": "...",
+  "full_description_en": "...",
+  "activity_en": "...",
+  "whatsapp_message_en": "...",
+  "characteristics_labels_en": ["label1", "label2", ...],
+  "features_en": ["text1", "text2", ...]
+}
+
+Spanish content:
+- Title: "${values.title_es || ''}"
+- Short description: "${values.description_es || ''}"
+- Full description: "${values.full_description_es || ''}"
+- Activity: "${values.activity_es || ''}"
+- WhatsApp message: "${values.whatsapp_message_es || ''}"
+- Characteristic labels (in order):
+${chars}
+- Features (in order):
+${feats}`
+
+    await navigator.clipboard.writeText(prompt)
+    window.open('https://chat.openai.com/', '_blank')
+    toast({ title: 'Prompt copiado', description: 'Pegalo en ChatGPT y copia el JSON de vuelta.' })
+  }, [watch, toast])
+
   return (
     <div>
       <div className="flex items-center gap-4 mb-6">
@@ -188,6 +221,10 @@ export default function PropertyFormPage() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-2xl font-bold">{isEdit ? 'Editar propiedad' : 'Nueva propiedad'}</h1>
+        <Button type="button" variant="outline" size="sm" className="ml-auto" onClick={handleTranslate}>
+          <Languages className="h-4 w-4 mr-2" />
+          Traducir con ChatGPT
+        </Button>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 max-w-4xl">
