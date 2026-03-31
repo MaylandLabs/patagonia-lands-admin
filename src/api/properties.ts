@@ -6,7 +6,7 @@ interface PaginatedResponse<T> {
   pagination: { total: number; page: number; limit: number; pages: number }
 }
 
-export async function getProperties(params?: { search?: string; province?: string; page?: number; limit?: number }) {
+export async function getProperties(params?: { search?: string; province?: string; page?: number; limit?: number; visible?: boolean }) {
   const { data } = await api.get<PaginatedResponse<Property>>('/properties/admin/list', { params })
   return data
 }
