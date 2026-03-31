@@ -22,7 +22,7 @@ export default function LoginPage() {
       await login({ email, password })
       navigate('/')
     } catch {
-      toast({ title: 'Error de autenticacion', description: 'Email o contrasena incorrectos', variant: 'destructive' })
+      toast({ title: 'Error de autenticacion', description: 'Usuario/email o contrasena incorrectos', variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -38,8 +38,8 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Label htmlFor="email">Email o usuario</Label>
+              <Input id="email" type="text" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Contrasena</Label>
